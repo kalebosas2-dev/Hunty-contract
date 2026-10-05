@@ -14,7 +14,6 @@ const RATE_LIMIT_TTL_THRESHOLD: u32 = 15 * 24 * 60 * 60;
 /// Namespace used to avoid collisions with other features keying by a bare `Address`.
 pub const RATE_LIMIT_NAMESPACE: &str = "HRATE";
 
-/// Legacy namespace used before the fix, for migration of existing entries.
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 #[contracttype]
@@ -41,23 +40,23 @@ impl RateLimiter {
         }
 
         // Migrate existing entries that were stored under the bare address.
-if let Some(data) = env
-    .storage()
-    .persistent()
-    .get::<Address, RateLimitData>(creator)
-{
-    let key = Self::key(env, creator);
+        if let Some(data) = env
+            .storage()
+            .persistent()
+            .get::<Address, RateLimitData>(creator)
+        {
+            let key = Self::key(env, creator);
 
-    env.storage().persistent().set(&key, &data);
+            env.storage().persistent().set(&key, &data);
 
-    env.storage()
-        .persistent()
-        .extend_ttl(&key, RATE_LIMIT_TTL_THRESHOLD, RATE_LIMIT_TTL);
+            env.storage()
+                .persistent()
+                .extend_ttl(&key, RATE_LIMIT_TTL_THRESHOLD, RATE_LIMIT_TTL);
 
-    env.storage().persistent().remove(creator);
+            env.storage().persistent().remove(creator);
 
-    return Some(data);
-}
+            return Some(data);
+        }
         None
     }
 
@@ -173,6 +172,55 @@ mod tests {
             let status = RateLimiter::get_status(&env, &creator, 86401);
             assert_eq!(status.creations_today, 10);
             assert!(status.cooldown_seconds > 0);
+        });
+    }
+
+
+
+        #[test]
+    fn migrates_legacy_rate_limit_entry() {
+        let env = Env::default();
+        let contract_id = env.register(crate::HuntyCore, ());
+        let creator = Address::generate(&env);
+
+        env.as_contract(&contract_id, || {
+            let mut timestamps = Vec::new(&env);
+            timestamps.push_back(1_000);
+            timestamps.push_back(2_000);
+
+            let legacy_data = RateLimitData { timestamps };
+
+            // Simulate an entry created by the old implementation.
+            env.storage()
+                .persistent()
+                .set(&creator, &legacy_data);
+
+            let new_key = (
+                Symbol::new(&env, RATE_LIMIT_NAMESPACE),
+                creator.clone(),
+            );
+
+            // The new namespaced entry should not exist yet.
+            assert!(!env.storage().persistent().has(&new_key));
+
+            // Reading the rate limit should migrate the old entry.
+            let migrated = RateLimiter::read(&env, &creator).unwrap();
+
+            assert_eq!(migrated, legacy_data);
+
+            // The new namespaced entry should now exist.
+            assert!(env.storage().persistent().has(&new_key));
+
+            // The old bare-address entry should be removed.
+            assert!(!env.storage().persistent().has(&creator));
+
+            let stored: RateLimitData = env
+                .storage()
+                .persistent()
+                .get(&new_key)
+                .unwrap();
+
+            assert_eq!(stored, legacy_data);
         });
     }
 }
