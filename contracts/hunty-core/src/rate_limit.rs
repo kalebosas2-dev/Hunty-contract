@@ -15,7 +15,6 @@ const RATE_LIMIT_TTL_THRESHOLD: u32 = 15 * 24 * 60 * 60;
 pub const RATE_LIMIT_NAMESPACE: &str = "HRATE";
 
 /// Legacy namespace used before the fix, for migration of existing entries.
-const RATE_LIMIT_LEGACY_NAMESPACE: &str = "HRATE_LEGACY";
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 #[contracttype]
@@ -30,12 +29,6 @@ impl RateLimiter {
         (Symbol::new(env, RATE_LIMIT_NAMESPACE), creator.clone())
     }
 
-    fn legacy_key(env: &Env, creator: &Address) -> (Symbol, Address) {
-        (
-            Symbol::new(env, RATE_LIMIT_LEGACY_NAMESPACE),
-            creator.clone(),
-        )
-    }
 
     /// Read the rate limit data for a creator, migrating legacy entries if needed.
     fn read(env: &Env, creator: &Address) -> Option<RateLimitData> {
@@ -48,18 +41,23 @@ impl RateLimiter {
         }
 
         // Migrate existing entries that were stored under the bare address.
-        if let Some(data) = env
-            .storage()
-            .persistent()
-            .get::<Address, RateLimitData>(creator)
-        {
-            env.storage()
-                .persistent()
-                .set(&Self::legacy_key(env, creator), &data);
-            env.storage().persistent().remove(creator);
-            return Some(data);
-        }
+if let Some(data) = env
+    .storage()
+    .persistent()
+    .get::<Address, RateLimitData>(creator)
+{
+    let key = Self::key(env, creator);
 
+    env.storage().persistent().set(&key, &data);
+
+    env.storage()
+        .persistent()
+        .extend_ttl(&key, RATE_LIMIT_TTL_THRESHOLD, RATE_LIMIT_TTL);
+
+    env.storage().persistent().remove(creator);
+
+    return Some(data);
+}
         None
     }
 
