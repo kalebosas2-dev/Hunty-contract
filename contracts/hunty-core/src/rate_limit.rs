@@ -14,7 +14,6 @@ const RATE_LIMIT_TTL_THRESHOLD: u32 = 15 * 24 * 60 * 60;
 /// Namespace used to avoid collisions with other features keying by a bare `Address`.
 pub const RATE_LIMIT_NAMESPACE: &str = "HRATE";
 
-
 #[derive(Clone, Debug, Eq, PartialEq)]
 #[contracttype]
 pub struct RateLimitData {
@@ -27,8 +26,7 @@ impl RateLimiter {
     fn key(env: &Env, creator: &Address) -> (Symbol, Address) {
         (Symbol::new(env, RATE_LIMIT_NAMESPACE), creator.clone())
     }
-
-
+     
     /// Read the rate limit data for a creator, migrating legacy entries if needed.
     fn read(env: &Env, creator: &Address) -> Option<RateLimitData> {
         if let Some(data) = env
@@ -191,14 +189,9 @@ mod tests {
             let legacy_data = RateLimitData { timestamps };
 
             // Simulate an entry created by the old implementation.
-            env.storage()
-                .persistent()
-                .set(&creator, &legacy_data);
+            env.storage().persistent().set(&creator, &legacy_data);
 
-            let new_key = (
-                Symbol::new(&env, RATE_LIMIT_NAMESPACE),
-                creator.clone(),
-            );
+            let new_key = (Symbol::new(&env, RATE_LIMIT_NAMESPACE), creator.clone());
 
             // The new namespaced entry should not exist yet.
             assert!(!env.storage().persistent().has(&new_key));
@@ -214,11 +207,7 @@ mod tests {
             // The old bare-address entry should be removed.
             assert!(!env.storage().persistent().has(&creator));
 
-            let stored: RateLimitData = env
-                .storage()
-                .persistent()
-                .get(&new_key)
-                .unwrap();
+            let stored: RateLimitData = env.storage().persistent().get(&new_key).unwrap();
 
             assert_eq!(stored, legacy_data);
         });
