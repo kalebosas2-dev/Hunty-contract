@@ -175,7 +175,7 @@ mod tests {
 
 
 
-        #[test]
+    #[test]
     fn migrates_legacy_rate_limit_entry() {
         let env = Env::default();
         let contract_id = env.register(crate::HuntyCore, ());
