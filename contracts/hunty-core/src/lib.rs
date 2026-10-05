@@ -4315,7 +4315,12 @@ impl HuntyCore {
         target_version: u32,
         wasm_hash: BytesN<32>,
     ) -> Result<hunty_migration::UpgradeProposal, hunty_migration::UpgradeAuthError> {
-        let proposal = migration::HuntyCoreMigration::propose_upgrade(&env, &admin, target_version, wasm_hash)?;
+        let proposal = migration::HuntyCoreMigration::propose_upgrade(
+    &env,
+    &admin,
+    target_version,
+    wasm_hash,
+)?;
         env.events().publish(
             migration::HuntyCoreMigration::upgrade_proposed_topic(&env),
             migration::HuntyCoreMigration::upgrade_proposed_event(&proposal),

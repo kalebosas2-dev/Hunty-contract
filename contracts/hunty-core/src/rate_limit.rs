@@ -25,8 +25,8 @@ pub struct RateLimiter;
 impl RateLimiter {
     fn key(env: &Env, creator: &Address) -> (Symbol, Address) {
         (Symbol::new(env, RATE_LIMIT_NAMESPACE), creator.clone())
-    }
-     
+        }
+
     /// Read the rate limit data for a creator, migrating legacy entries if needed.
     fn read(env: &Env, creator: &Address) -> Option<RateLimitData> {
         if let Some(data) = env
@@ -172,8 +172,6 @@ mod tests {
             assert!(status.cooldown_seconds > 0);
         });
     }
-
-
 
     #[test]
     fn migrates_legacy_rate_limit_entry() {

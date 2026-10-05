@@ -72,7 +72,8 @@ impl NftRewardMigration {
             now,
             admin.clone(),
         );
-        env.events().publish(Self::upgrade_executed_topic(env), event);
+        env.events()
+    .publish(Self::upgrade_executed_topic(env), event);
 
         env.deployer().update_current_contract_wasm(new_wasm_hash);
         Ok(())
